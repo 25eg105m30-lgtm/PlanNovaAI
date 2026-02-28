@@ -1,8 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// TODO: create providers
+import 'services/auth_service.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
+
+// simple ChangeNotifier to expose auth state and actions
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService = AuthService();
+  User? _user;
+
+  User? get user => _user;
+  bool get isSignedIn => _user != null;
+
+  Future<void> signInWithGoogle(BuildContext context) async {
+    try {
+      _user = await _authService.signInWithGoogle();
+      notifyListeners();
+      if (_user != null) {
+        // Navigate to home screen after successful login
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      // basic error handling
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login failed: $e')),
+      );
+    }
+  }
+
+  Future<void> signOut() async {
+    await _authService.signOut();
+    _user = null;
+    notifyListeners();
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +53,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Add ChangeNotifierProviders here
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: MaterialApp(
         title: 'Smart Timetable AI',
@@ -25,9 +61,7 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           colorSchemeSeed: Colors.blue,
         ),
-        home: const Scaffold(
-          body: Center(child: Text('Welcome to Smart Timetable AI')),
-        ),
+        home: const LoginScreen(),
       ),
     );
   }
